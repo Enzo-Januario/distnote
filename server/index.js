@@ -7,22 +7,14 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-
-// CORS: permita apenas seu frontend hospedado no Render
 const io = new Server(server, {
-  cors: {
-    origin: 'https://distnote-frontend.onrender.com',
-    methods: ['GET', 'POST', 'PUT', 'DELETE']
-  }
+  cors: { origin: '*' },
 });
 
-app.use(cors({
-  origin: 'https://distnote-frontend.onrender.com'
-}));
-
+app.use(cors());
 app.use(express.json());
 
-// Conexão com o MongoDB
+// MongoDB Connection
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB conectado"))
   .catch(err => console.error(err));
@@ -31,19 +23,23 @@ mongoose.connect(process.env.MONGO_URI)
 const NoteSchema = new mongoose.Schema({ text: String });
 const Note = mongoose.model('Note', NoteSchema);
 
-// Rotas REST
+// REST API
+
+// Buscar todas as anotações
 app.get('/notes', async (req, res) => {
   const notes = await Note.find();
   res.json(notes);
 });
 
+// Criar nova anotação
 app.post('/notes', async (req, res) => {
   const note = new Note({ text: req.body.text });
   await note.save();
-  io.emit('new_note', note);
+  io.emit('new_note', note); // Envia para todos os clientes conectados
   res.status(201).json(note);
 });
 
+// Editar anotação existente
 app.put('/notes/:id', async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
@@ -59,6 +55,7 @@ app.put('/notes/:id', async (req, res) => {
   }
 });
 
+// Deletar anotação
 app.delete('/notes/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -82,6 +79,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// Porta
+// Iniciar servidor
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
