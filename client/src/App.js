@@ -3,7 +3,10 @@ import axios from 'axios';
 import { io } from 'socket.io-client';
 import './App.css';
 
-const socket = io();
+const API_URL = process.env.REACT_APP_API_URL;
+const socket = io(API_URL, {
+  transports: ['websocket']
+});
 
 function App() {
   const [notes, setNotes] = useState([]);
@@ -11,7 +14,7 @@ function App() {
   const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
-    axios.get('/notes').then(res => setNotes(res.data));
+    axios.get(`${API_URL}/notes`).then(res => setNotes(res.data));
 
     socket.on('new_note', note => {
       setNotes(prev => [...prev, note]);
@@ -40,10 +43,10 @@ function App() {
     if (!trimmed) return;
 
     if (editingId) {
-      await axios.put(`/notes/${editingId}`, { text: trimmed });
+      await axios.put(`${API_URL}/notes/${editingId}`, { text: trimmed });
       setEditingId(null);
     } else {
-      await axios.post('/notes', { text: trimmed });
+      await axios.post(`${API_URL}/notes`, { text: trimmed });
     }
 
     setText('');
@@ -55,7 +58,7 @@ function App() {
   };
 
   const handleDelete = async (id) => {
-    await axios.delete(`/notes/${id}`);
+    await axios.delete(`${API_URL}/notes/${id}`);
   };
 
   return (
