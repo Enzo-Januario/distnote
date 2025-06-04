@@ -7,39 +7,45 @@ const { Server } = require('socket.io');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: '*' },
-});
 
-app.use(cors());
+// Permitir apenas o frontend hospedado acessar via CORS
+app.use(cors({
+  origin: 'https://distnote-frontend.onrender.com',
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+}));
+
 app.use(express.json());
 
-// MongoDB Connection
+const io = new Server(server, {
+  cors: {
+    origin: 'https://distnote-frontend.onrender.com',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  },
+});
+
+// Conexão com o MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB conectado"))
-  .catch(err => console.error(err));
+  .catch(err => console.error("Erro ao conectar ao MongoDB:", err));
 
-// Mongoose Model
+// Modelo de anotação
 const NoteSchema = new mongoose.Schema({ text: String });
 const Note = mongoose.model('Note', NoteSchema);
 
-// REST API
+// Rotas REST
 
-// Buscar todas as anotações
 app.get('/notes', async (req, res) => {
   const notes = await Note.find();
   res.json(notes);
 });
 
-// Criar nova anotação
 app.post('/notes', async (req, res) => {
   const note = new Note({ text: req.body.text });
   await note.save();
-  io.emit('new_note', note); // Envia para todos os clientes conectados
+  io.emit('new_note', note);
   res.status(201).json(note);
 });
 
-// Editar anotação existente
 app.put('/notes/:id', async (req, res) => {
   const { id } = req.params;
   const { text } = req.body;
@@ -55,7 +61,6 @@ app.put('/notes/:id', async (req, res) => {
   }
 });
 
-// Deletar anotação
 app.delete('/notes/:id', async (req, res) => {
   const { id } = req.params;
 
@@ -72,13 +77,15 @@ app.delete('/notes/:id', async (req, res) => {
 
 // WebSocket
 io.on('connection', (socket) => {
-  console.log('Cliente conectado');
+  console.log('🔌 Cliente conectado');
 
   socket.on('disconnect', () => {
-    console.log('Cliente desconectado');
+    console.log('🔌 Cliente desconectado');
   });
 });
 
 // Iniciar servidor
 const PORT = process.env.PORT || 4000;
-server.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+server.listen(PORT, () => {
+  console.log(`🚀 Servidor rodando na porta ${PORT}`);
+});
